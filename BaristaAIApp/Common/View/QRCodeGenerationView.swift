@@ -43,6 +43,9 @@ struct QRCodeGenerationView: View {
         .onAppear {
             generateQRCode()
         }
+        .onChange(of: notification.status) {
+            generateQRCode()
+        }
         .navigationTitle("QR Code")
         .navigationBarTitleDisplayMode(.inline)
     }
