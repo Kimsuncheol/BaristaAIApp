@@ -80,12 +80,16 @@ struct NotificationRow: View {
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 5) {
-                Text(notification.title)
+                Text(notification.isTakenout ? "You have taken out this item" : notification.title)
                     .font(.headline)
-                    .foregroundColor(isRead ? .gray : .black)
+                
                 Text(notification.message)
                     .font(.subheadline)
-                    .foregroundColor(isRead ? .gray : .black)
+                
+                Text("Order status: \(notification.status)")
+                    .font(.subheadline)
+                    .foregroundColor(notification.status == "Completed" ? .green : .red)
+                
                 Text(formattedTime)
                     .font(.caption)
                     .foregroundColor(.gray)
@@ -96,6 +100,7 @@ struct NotificationRow: View {
 //                    Text("\(String(describing: notification.takenoutTime))")
 //                }
             }
+            .foregroundColor(isRead ? .gray : .black)
             
             Spacer()
             
