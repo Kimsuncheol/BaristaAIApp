@@ -48,7 +48,7 @@ struct QRCodeGenerationView: View {
     }
     
     private func generateQRCode() {
-        let qrDataString = "\(notification.id)--\(notification.customerEmail)--\(notification.time)"
+        let qrDataString = "\(notification.id)--\(notification.customerEmail)--\(notification.time)--\(notification.status)"
         filter.message = Data(qrDataString.utf8)
         
         if let outputImage = filter.outputImage,
