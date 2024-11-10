@@ -93,9 +93,9 @@ class PaymentHistoryViewModel: ObservableObject {
         }
     }
 
-    // 주문 상태 실시간 업데이트 리스너 설정
+    // 주문 상태 실시간 업데이트 리스너 설정 -> 알림을 위해
     func startListeningForOrderStatus(customerEmail: String) {
-        print("Starting listener for customerEmail: \(customerEmail)")
+        print("From PaymentHistoryViewModel - Starting listener for customerEmail: \(customerEmail)")
 
         var isInitialLoad = true // 초기 로드 여부를 추적
 

@@ -46,6 +46,7 @@ struct BaristaAIAppApp: App {
                 ContentView()
                     .environmentObject(paymentHistoryViewModel)
                     .environmentObject(authViewModel)
+                    .environmentObject(NotificationViewModel())
                     .preferredColorScheme(.light)
             }
         }

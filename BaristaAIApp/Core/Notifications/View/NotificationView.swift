@@ -7,11 +7,12 @@
 
 import SwiftUI
 import Combine
-
+// status가 Completed 경우에만 QRCode를 생성하도록 수정
 struct NotificationView: View {
     let user: User?
-    @StateObject private var viewModel = NotificationViewModel()
+    @ObservedObject private var viewModel = NotificationViewModel()
     @State private var selectedNotification: NotificationModel?
+    @State private var selectedNotificationInParent: NotificationModel?
     @State private var isNavigatingToQRCode = false
     
     var body: some View {
@@ -23,7 +24,9 @@ struct NotificationView: View {
             } else {
                 List {
                     ForEach(viewModel.notifications) { notification in
-                        NotificationRow(notification: notification, viewModel: viewModel, isNavigatingToQRCode: $isNavigatingToQRCode, selectedNotification: $selectedNotification)
+                        NotificationRow(viewModel: viewModel, isNavigatingToQRCode: $isNavigatingToQRCode, selectedNotification: getBindingForNotification(notification), selectedNotificationInParent: $selectedNotificationInParent
+                        )
+                        
                     }
                 }
                 .listStyle(PlainListStyle())
@@ -31,12 +34,18 @@ struct NotificationView: View {
         }
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
+//        .task {
+//            await viewModel.loadNotifications(customerEmail: user?.email)
+//            viewModel.startListeningForNotifications(customerEmail: user?.email)
+//        }
         .onAppear {
-            viewModel.loadNotifications(customerEmail: user?.email)
-            PaymentHistoryViewModel().startListeningForOrderStatus(customerEmail: user?.email ?? "")
+            Task {
+                await viewModel.loadNotifications(customerEmail: user?.email)
+            }
+            viewModel.startListeningForNotifications(customerEmail: user?.email)
         }
         .onDisappear {
-            PaymentHistoryViewModel().stopListeningForOrderStatus()
+            viewModel.stopListeningForNotifications()
         }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -48,10 +57,26 @@ struct NotificationView: View {
             }
         }
         .navigationDestination(isPresented: $isNavigatingToQRCode) {
-            if let selectedNotification = selectedNotification {
-                QRCodeGenerationView(notification: selectedNotification)
+            // 아무것도 전달이 안되어 저 뷰에 진입 시 아무것도 표시되지 않음
+            if let selectedNotificationInParent = selectedNotificationInParent {
+                QRCodeGenerationView(id: selectedNotificationInParent.id, customerEmail: selectedNotificationInParent.customerEmail, time: selectedNotificationInParent.time, status: "Completed")
+            } else {
+//                print(selectedNotification)
+                Text("\(String(describing: selectedNotificationInParent))")
             }
         }
+    }
+    
+    // Function to create Binding for selectedNotification
+    private func getBindingForNotification(_ notification: NotificationModel) -> Binding<NotificationModel> {
+        return Binding(
+            get: { notification },
+            set: { updatedNotification in
+                if let index = viewModel.notifications.firstIndex(where: { $0.id == updatedNotification.id }) {
+                    viewModel.notifications[index] = updatedNotification
+                }
+            }
+        )
     }
 }
 
@@ -61,44 +86,38 @@ struct NotificationView: View {
 }
 
 struct NotificationRow: View {
-    var notification: NotificationModel
-    @ObservedObject var viewModel = NotificationViewModel()
+    @ObservedObject var viewModel: NotificationViewModel
     @Binding var isNavigatingToQRCode: Bool
-    @Binding var selectedNotification: NotificationModel?
+    @Binding var selectedNotification: NotificationModel
+    @Binding var selectedNotificationInParent: NotificationModel?
     @State private var isRead: Bool
     @State private var formattedTime: String
     
-    init(notification: NotificationModel, viewModel: NotificationViewModel, isNavigatingToQRCode: Binding<Bool>, selectedNotification: Binding<NotificationModel?>) {
-        self.notification = notification
+    init(viewModel: NotificationViewModel, isNavigatingToQRCode: Binding<Bool>, selectedNotification: Binding<NotificationModel>, selectedNotificationInParent: Binding<NotificationModel?>) {
         self.viewModel = viewModel
-        self._isRead = State(initialValue: notification.isRead)
-        self._formattedTime = State(initialValue: NotificationRow.formatNotificationTime(notification.time))
+        self._isRead = State(initialValue: selectedNotification.wrappedValue.isRead)
+        self._formattedTime = State(initialValue: NotificationRow.formatNotificationTime(selectedNotification.wrappedValue.time))
         self._isNavigatingToQRCode = isNavigatingToQRCode
         self._selectedNotification = selectedNotification
+        self._selectedNotificationInParent = selectedNotificationInParent
     }
     
     var body: some View {
         HStack {
             VStack(alignment: .leading, spacing: 5) {
-                Text(notification.isTakenout ? "You have taken out this item" : notification.title)
+                Text(selectedNotification.isTakenout ? "You have taken out this item" : selectedNotification.title)
                     .font(.headline)
                 
-                Text(notification.message)
+                Text(selectedNotification.message)
                     .font(.subheadline)
                 
-                Text("Order status: \(notification.status)")
+                Text("Order status: \(selectedNotification.status)")
                     .font(.subheadline)
-                    .foregroundColor(notification.status == "Completed" ? .green : .red)
+                    .foregroundColor(selectedNotification.status == "Completed" ? .green : .red)
                 
                 Text(formattedTime)
                     .font(.caption)
                     .foregroundColor(.gray)
-                
-//                Text(notification.isTakenout ? "Taken out" : "Not taken out")
-//                
-//                if notification.isTakenout {
-//                    Text("\(String(describing: notification.takenoutTime))")
-//                }
             }
             .foregroundColor(isRead ? .gray : .black)
             
@@ -116,27 +135,35 @@ struct NotificationRow: View {
         .swipeActions(allowsFullSwipe: true) {
             Button(role: .destructive) {
                 Task {
-                    await viewModel.removeNotification(notification)
+                    await viewModel.removeNotification(selectedNotification)
                 }
             } label: {
                 Label("Delete", systemImage: "trash")
             }
         }
         .onTapGesture {
-            if !notification.isTakenout, notification.status != "Cancelled", notification.status != "Rejected" {
-                selectedNotification = notification
+//            if !selectedNotification.isTakenout, selectedNotification.status != "Cancelled", selectedNotification.status != "Rejected" {
+//                selectedNotificationInParent = selectedNotification
+//                
+//                isNavigatingToQRCode = true
+//            }
+            if !selectedNotification.isTakenout && selectedNotification.status == "Completed" {
+                selectedNotificationInParent = selectedNotification
+                
                 isNavigatingToQRCode = true
             }
-            if !notification.isRead {
+            
+            // 위 아래 쫌이따 순서 변경할 거
+            if !selectedNotification.isRead {
                 Task {
-                    await viewModel.readNotification(notification)
+                    await viewModel.readNotification(selectedNotification)
                     isRead = true
                 }
             }
         }
         .contentShape(Rectangle())
         .onAppear {
-            formattedTime = NotificationRow.formatNotificationTime(notification.time)
+            formattedTime = NotificationRow.formatNotificationTime(selectedNotification.time)
         }
     }
     

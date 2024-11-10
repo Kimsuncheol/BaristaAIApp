@@ -11,50 +11,22 @@ import SwiftUI
 
 class NotificationViewModel: ObservableObject {
     @Published var notifications: [NotificationModel] = []
-    
+
     let db = Firestore.firestore()
+    private var listener: ListenerRegistration?
     
     // 알림 데이터 로드
-    func loadNotifications(customerEmail: String?) {
-//        print("notificationViewModel customerEmail: \(Auth.auth().currentUser?.email ?? "no user")")
-//        
-//        guard let currentUser = Auth.auth().currentUser else {
-//            // 사용자가 로그인하지 않은 경우 "roll-out" 타입의 알림만 가져오기
-//            fetchNotifications(type: "roll-out") { [weak self] notifications in
-//                DispatchQueue.main.async {
-//                    // 시간 내림차순 정렬
-//                    self?.notifications = notifications.sorted { $0.time > $1.time }
-//                }
-//            }
-//            return
-//        }
+    func loadNotifications(customerEmail: String?) async {
         guard let customerEmail = customerEmail else {
-            fetchNotifications(type: "roll-out") { [weak self] notifications in
-                DispatchQueue.main.async {
-                    // 시간 내림차순 정렬
-                    self?.notifications = notifications.sorted { $0.time > $1.time }
-                }
-            }
+            await fetchNotifications(type: "roll-out")
             return
         }
         
-        // 사용자가 로그인한 경우 해당 사용자의 알림만 가져오기
-//        fetchNotifications(customerEmail: currentUser.email) { [weak self] notifications in
-//            DispatchQueue.main.async {
-//                // 시간 내림차순 정렬
-//                self?.notifications = notifications.sorted { $0.time > $1.time }
-//            }
-//        }
-        fetchNotifications(customerEmail: customerEmail) { [weak self] notifications in
-            DispatchQueue.main.async {
-                // 시간 내림차순 정렬
-                self?.notifications = notifications.sorted { $0.time > $1.time }
-            }
-        }
+        await fetchNotifications(customerEmail: customerEmail)
     }
     
     // 알림을 Firestore에서 가져오는 함수
-    private func fetchNotifications(type: String? = nil, customerEmail: String? = nil, completion: @escaping ([NotificationModel]) -> Void) {
+    private func fetchNotifications(type: String? = nil, customerEmail: String? = nil) async {
         var query: Query = db.collection("notifications")
         
         // 필터링 조건 설정
@@ -65,31 +37,106 @@ class NotificationViewModel: ObservableObject {
             query = query.whereField("customerEmail", isEqualTo: customerEmail)
         }
         
-        query.getDocuments { snapshot, error in
-            if let error = error {
-                print("Error fetching notifications: \(error)")
-                completion([])
-            } else {
-                let notifications = snapshot?.documents.compactMap { doc -> NotificationModel? in
-                    let data = doc.data()
-                    
-                    let time = (data["time"] as? Timestamp)?.dateValue() ?? Date()
-                    
-                    return NotificationModel(
-                        id: doc.documentID,
-                        type: data["type"] as? String ?? "",
-                        customerEmail: data["customerEmail"] as? String ?? "",
-                        title: data["title"] as? String ?? "",
-                        message: data["message"] as? String ?? "",
-                        time: time,
-                        isRead: data["isRead"] as? Bool ?? false,
-                        status: data["status"] as? String ?? "",
-                        isTakenout: data["isTakenout"] as? Bool ?? false
-                    )
-                } ?? []
-                completion(notifications)
+        do {
+            let snapshot = try await query.getDocuments()
+            
+            let notifications = snapshot.documents.compactMap { document -> NotificationModel? in
+                let data = document.data()
+                
+                let time = (data["time"] as? Timestamp)?.dateValue() ?? Date()
+                return NotificationModel(
+                    id: document.documentID,
+                    type: data["type"] as? String ?? "",
+                    customerEmail: data["customerEmail"] as? String ?? "",
+                    title: data["title"] as? String ?? "",
+                    message: data["message"] as? String ?? "",
+                    time: time,
+                    isRead: data["isRead"] as? Bool ?? false,
+                    status: data["status"] as? String ?? "",
+                    isTakenout: data["isTakenout"] as? Bool ?? false
+                )
+            }
+            
+            DispatchQueue.main.async {
+                self.notifications = notifications.sorted { $0.time > $1.time }
+            }
+        } catch {
+            print("Error fetching notifications: \(error)")
+        }
+    }
+    
+    func startListeningForNotifications(customerEmail: String?) {
+        guard let customerEmail = customerEmail else { return }
+        
+        stopListeningForNotifications()
+        
+        listener = db.collection("notifications")
+            .whereField("customerEmail", isEqualTo: customerEmail)
+            .addSnapshotListener { [weak self] snapshot, error in
+                guard let snapshot = snapshot else {
+                    print("NotificationsViewModel - Error listening for notifications: \(error?.localizedDescription ?? "Unknown error")")
+                    return
+                }
+                
+                Task {
+                    await self?.processDocumentChanges(snapshot: snapshot)
+                }
+        }
+    }
+    
+    private func processDocumentChanges(snapshot: QuerySnapshot) async {
+//        print("NotificationViewModel - Processing document changes")
+        for documentChange in snapshot.documentChanges {
+            let data = documentChange.document.data()
+            
+            let time = (data["time"] as? Timestamp)?.dateValue() ?? Date()
+            let updatedNotification = NotificationModel(
+                id: documentChange.document.documentID,
+                type: data["type"] as? String ?? "",
+                customerEmail: data["customerEmail"] as? String ?? "",
+                title: data["title"] as? String ?? "",
+                message: data["message"] as? String ?? "",
+                time: time,
+                isRead: data["isRead"] as? Bool ?? false,
+                status: data["status"] as? String ?? "",
+                isTakenout: data["isTakenout"] as? Bool ?? false
+            )
+            
+            switch documentChange.type {
+            case .added
+                where !self.notifications.contains(updatedNotification):
+                DispatchQueue.main.async {
+                    self.notifications.append(updatedNotification)
+                }
+//                self.notifications.append(updatedNotification)
+            case .modified:
+                if let index = self.notifications.firstIndex(where: { $0.id == updatedNotification.id }) {
+                    if self.notifications[index].status != updatedNotification.status {
+                        DispatchQueue.main.async {
+                            self.notifications[index].status = updatedNotification.status
+                        }
+                    }
+                }
+            case .removed:
+                DispatchQueue.main.async {
+                    if let index = self.notifications.firstIndex(where: { $0.id == updatedNotification.id }) {
+                        self.notifications.remove(at: index)
+                    }
+                }
+            default:
+                break
             }
         }
+        
+        // 시간 내림차순 정렬 후 업데이트
+        DispatchQueue.main.async {
+            self.notifications.sort { $0.time > $1.time }
+        }
+    }
+    
+    func stopListeningForNotifications() {
+        listener?.remove()
+        listener = nil
     }
     
     // 알림 삭제 함수
