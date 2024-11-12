@@ -179,6 +179,7 @@ struct OrderView: View {
             LoginView()
         }
         .alert(isPresented: $showAlert) {
+            // I need to add
             if showSuccessInsertOrderDataIntoCart {
                 return Alert(
                     title: Text("Cart Update"),
@@ -207,6 +208,9 @@ struct OrderView: View {
                     }
                 )
             }
+        }
+        .navigationDestination(isPresented: $navigateToCart) {
+            CartView(user: user)
         }
         .onChange(of: cartViewModel.alertMessage) {
             // alertMessage가 업데이트될 때만 알림을 표시

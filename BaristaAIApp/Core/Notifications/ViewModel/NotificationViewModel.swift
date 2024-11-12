@@ -111,6 +111,11 @@ class NotificationViewModel: ObservableObject {
 //                self.notifications.append(updatedNotification)
             case .modified:
                 if let index = self.notifications.firstIndex(where: { $0.id == updatedNotification.id }) {
+                    if self.notifications[index].isRead != updatedNotification.isRead {
+                        DispatchQueue.main.async {
+                            self.notifications[index].isRead = updatedNotification.isRead
+                        }
+                    }
                     if self.notifications[index].status != updatedNotification.status {
                         DispatchQueue.main.async {
                             self.notifications[index].status = updatedNotification.status

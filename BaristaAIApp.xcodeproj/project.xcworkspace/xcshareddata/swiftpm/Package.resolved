@@ -1,5 +1,5 @@
 {
-  "originHash" : "07d9f66d55caf2cfa7e580f505e6cf8cee08ea451ecfd386699d19003ac82b50",
+  "originHash" : "b3f8826240a9da91a1fc59d61a62a2112e8e6964ec10f2edf3ca38e2b959f050",
   "pins" : [
     {
       "identity" : "abseil-cpp-binary",
@@ -197,6 +197,15 @@
       "state" : {
         "revision" : "edb6ed4919f7756157fe02f2552b7e3850a538e5",
         "version" : "1.28.1"
+      }
+    },
+    {
+      "identity" : "swiftuichipgroup",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Open-Bytes/SwiftUIChipGroup.git",
+      "state" : {
+        "revision" : "11ce46abfeccd894cd94bcf98034f16eafb3be35",
+        "version" : "0.1.0"
       }
     },
     {

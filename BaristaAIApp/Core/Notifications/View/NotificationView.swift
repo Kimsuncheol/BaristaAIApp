@@ -23,7 +23,7 @@ struct NotificationView: View {
                     .foregroundColor(.gray)
             } else {
                 List {
-                    ForEach(viewModel.notifications) { notification in
+                    ForEach(viewModel.notifications, id: \.id) { notification in
                         NotificationRow(viewModel: viewModel, isNavigatingToQRCode: $isNavigatingToQRCode, selectedNotification: getBindingForNotification(notification), selectedNotificationInParent: $selectedNotificationInParent
                         )
                         
@@ -34,10 +34,6 @@ struct NotificationView: View {
         }
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
-//        .task {
-//            await viewModel.loadNotifications(customerEmail: user?.email)
-//            viewModel.startListeningForNotifications(customerEmail: user?.email)
-//        }
         .onAppear {
             Task {
                 await viewModel.loadNotifications(customerEmail: user?.email)
@@ -61,7 +57,6 @@ struct NotificationView: View {
             if let selectedNotificationInParent = selectedNotificationInParent {
                 QRCodeGenerationView(id: selectedNotificationInParent.id, customerEmail: selectedNotificationInParent.customerEmail, time: selectedNotificationInParent.time, status: "Completed")
             } else {
-//                print(selectedNotification)
                 Text("\(String(describing: selectedNotificationInParent))")
             }
         }
@@ -92,6 +87,7 @@ struct NotificationRow: View {
     @Binding var selectedNotificationInParent: NotificationModel?
     @State private var isRead: Bool
     @State private var formattedTime: String
+    @State private var timer: Timer?  // 타이머 변수 추가
     
     init(viewModel: NotificationViewModel, isNavigatingToQRCode: Binding<Bool>, selectedNotification: Binding<NotificationModel>, selectedNotificationInParent: Binding<NotificationModel?>) {
         self.viewModel = viewModel
@@ -119,18 +115,12 @@ struct NotificationRow: View {
                     .font(.caption)
                     .foregroundColor(.gray)
             }
-            .foregroundColor(isRead ? .gray : .black)
+            .foregroundColor(selectedNotification.isRead || selectedNotification.status == "Cancelled" || selectedNotification.status == "Rejected" ? .gray : .black)
             
             Spacer()
-            
-            if !isRead {
-                Circle()
-                    .fill(Color.blue)
-                    .frame(width: 10, height: 10)
-            }
         }
         .padding()
-        .background(isRead ? Color.white : Color(UIColor.systemGray6))
+        .background((selectedNotification.isRead || selectedNotification.status == "Cancelled" || selectedNotification.status == "Rejected") ? Color.white : Color(UIColor.systemGray6))
         .cornerRadius(8)
         .swipeActions(allowsFullSwipe: true) {
             Button(role: .destructive) {
@@ -142,27 +132,33 @@ struct NotificationRow: View {
             }
         }
         .onTapGesture {
-//            if !selectedNotification.isTakenout, selectedNotification.status != "Cancelled", selectedNotification.status != "Rejected" {
-//                selectedNotificationInParent = selectedNotification
-//                
-//                isNavigatingToQRCode = true
-//            }
             if !selectedNotification.isTakenout && selectedNotification.status == "Completed" {
                 selectedNotificationInParent = selectedNotification
                 
                 isNavigatingToQRCode = true
             }
             
-            // 위 아래 쫌이따 순서 변경할 거
             if !selectedNotification.isRead {
                 Task {
                     await viewModel.readNotification(selectedNotification)
-                    isRead = true
                 }
             }
+            print("isRead: \(selectedNotification.isRead)")
         }
         .contentShape(Rectangle())
         .onAppear {
+//            formattedTime = NotificationRow.formatNotificationTime(selectedNotification.time)
+            startTimer()
+        }
+        .onDisappear {
+            timer?.invalidate()
+        }
+    }
+    
+    private func startTimer() {
+        guard timer == nil else { return }
+        
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             formattedTime = NotificationRow.formatNotificationTime(selectedNotification.time)
         }
     }

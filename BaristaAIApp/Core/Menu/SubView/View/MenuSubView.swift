@@ -110,8 +110,11 @@ struct CardView: View {
             .padding(.bottom, 10)
             
             Text(drink.name)
-                .font(.system(size: 20).bold())
+                .font(.system(size: 18).bold())
+            
+            Spacer()
         }
+        .frame(width: imageWidth, height: imageWidth + 60)
         .onAppear {
             myFavoriteViewModel.fetchFavorites(customerEmail: user?.email ?? "")
         }

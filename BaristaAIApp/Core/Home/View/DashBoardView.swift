@@ -14,6 +14,7 @@ struct DashBoardView: View {
     let columns = [GridItem(.flexible()), GridItem(.flexible())]
     
     @State private var currentIndex = 0  // State variable to track the current index
+    @State private var currentCollectionIndex = 0
     
     @StateObject var myFavoriteViewModel = MyFavoriteViewModel()
     @StateObject var cartViewModel = CartViewModel()
@@ -24,7 +25,6 @@ struct DashBoardView: View {
     
     var body: some View {
         VStack(alignment: .center) {
-            // myFavoriteViewModel에 contains 함수 구축하여 그 함수에 싹 다 데이터 대입해봐야 할 듯...
             ScrollView(showsIndicators: false) {
                 TabView(selection: $currentIndex) {
                     colors[colors.count - 1].tag(-1)
@@ -47,30 +47,95 @@ struct DashBoardView: View {
                 }
                 .accessibilityIdentifier("CarouselView")
                 
-                LazyVGrid(columns: columns) {
-                    ForEach(viewModel.drinks.indices, id: \.self) { index in
-                        HomeCoffeeCardView(user: user, colors: colors, drink: $viewModel.drinks[index], NavigateToLogin: $NavigateToLogin, myFavoriteViewModel: myFavoriteViewModel)
+                HStack {
+                    Button {
+                        updateCurrentCollection(["Hot", "Cold"], 0)
+                    } label: {
+                        Text("Top 5 in All")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Capsule().fill(currentCollectionIndex == 0 ? Color.blue : Color.blue.opacity(0.5)))
+                    }
+                    
+                    Spacer()
+                    
+                    Button {
+                        updateCurrentCollection(["Cold"], 1)
+                    } label: {
+                        Text("Top 5 in Cold")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Capsule().fill(currentCollectionIndex == 1 ? Color.blue : Color.blue.opacity(0.5)))
+                    }
+                    
+                    Spacer()
+                    
+                    Button {
+                        updateCurrentCollection(["Hot"], 2)
+                    } label: {
+                        Text("Top 5 in Hot")
+                            .font(.system(size: 14, weight: .bold))
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(Capsule().fill(currentCollectionIndex == 2 ? Color.blue : Color.blue.opacity(0.5)))
+                    }
+                }
+                .padding()
+                
+                if viewModel.isLoading {
+                    ProgressView()
+                        .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+//                        .scaleEffect(2)
+                        .padding()
+
+                } else {
+                    // 음료가 있을 때만 LazyVGrid 출력
+                    LazyVGrid(columns: columns) {
+//                        ForEach(viewModel.drinks, id: \.id) { drink in
+//                            HomeCoffeeCardView(user: user, colors: colors, drink: Binding(get: { drink }, set: { _ in }), NavigateToLogin: $NavigateToLogin, myFavoriteViewModel: myFavoriteViewModel)
+//                        }
+//                        ForEach(viewModel.topSellingDrinks[viewModel.collectionName.first ?? ""] ?? [], id: \.id) { drink in
+//                            HomeCoffeeCardView(user: user, colors: colors, drink: Binding(get: { drink }, set: { _ in }), NavigateToLogin: $NavigateToLogin, myFavoriteViewModel: myFavoriteViewModel)
+//                        }
+                        ForEach(viewModel.topSellingDrinks[viewModel.collectionName.contains("Hot") && viewModel.collectionName.contains("Cold") ? "All" : viewModel.collectionName.first ?? ""] ?? [], id: \.id) { drink in
+                            HomeCoffeeCardView(user: user, colors: colors, drink: Binding(get: { drink }, set: { _ in }), NavigateToLogin: $NavigateToLogin, myFavoriteViewModel: myFavoriteViewModel)
+                        }
+                    }
+                    .padding(.horizontal)
+                    
+                    if viewModel.topSellingDrinks.isEmpty {
+                        Text("No drinks available")
+                            .font(.title2.bold())
+                            .foregroundColor(.gray)
+                            .padding(.top, 20)
                     }
                 }
             }
             .padding(.horizontal)
-            
-//            Spacer()
         }
         .fullScreenCover(isPresented: $NavigateToLogin) {
             LoginView()
         }
         .padding(.vertical, 1)
         .onAppear {
-            viewModel.fetchDrinks()
             cartViewModel.fetchCart(customerEmail: user?.email ?? "")
             myFavoriteViewModel.fetchFavorites(customerEmail: user?.email ?? "")
-        }
-        .onAppear {
             startTimer()
         }
+//        .onAppear {
+//        }
         .onDisappear {
             stopTimer()
+        }
+    }
+    
+    private func updateCurrentCollection(_ collectionName: [String], _ index: Int) {
+        viewModel.collectionName = collectionName
+        currentCollectionIndex = index
+        Task {
+            await viewModel.fetchDrinks()
         }
     }
     
@@ -103,6 +168,7 @@ struct HomeCoffeeCardView: View {
     var imageWidth = UIScreen.main.bounds.width / 2 - 20
     let colors: [Color]     // I will remove this code after completing constructing firestore
     @Binding var drink: Drink
+//    var drink: Drink
     @Binding var NavigateToLogin: Bool
     
     @ObservedObject var myFavoriteViewModel: MyFavoriteViewModel
@@ -120,7 +186,8 @@ struct HomeCoffeeCardView: View {
         VStack(alignment: .leading) {
             ZStack(alignment: .topTrailing) {
 //                Image("")
-                NavigationLink(destination: OrderView(user: user, drink: $drink)) {             RoundedRectangle(cornerRadius: 10)
+                NavigationLink(destination: OrderView(user: user, drink: $drink)) {
+                    RoundedRectangle(cornerRadius: 10)
                         .frame(width: imageWidth)
                         .foregroundColor(Color.blue.opacity(0.5))
                         .aspectRatio(1 / 1.1, contentMode: .fit)
@@ -166,18 +233,19 @@ struct HomeCoffeeCardView: View {
             NavigationLink(destination: OrderView(user: user, drink: $drink)) {
                 VStack(alignment: .leading) {
                     Text(drink.name)
-                        .font(.title3.bold())
                     
                     Text("\(drink.price) KRW")
-                        .font(.title3.bold())
                     
                     Text(drink.description)
+                        .font(.system(size: 16, weight: .regular))
+                        .foregroundColor(.gray.opacity(0.9))
                         .frame(height: 60, alignment: .top) // Set a fixed height for the description text
                         .lineLimit(3)
                         .multilineTextAlignment(.leading)
                     //                        .padding(.top, -(UIScreen.main.bounds.height / 200))
                 }
                 .foregroundStyle(.black)
+                .font(.system(size: 18, weight: .bold))
             }
         }
         .frame(width: imageWidth)

@@ -152,7 +152,9 @@ class LoginViewModel: NSObject, ObservableObject, ASAuthorizationControllerDeleg
                 return
             }
             
-            let credential = OAuthProvider.credential(withProviderID: "apple.com", idToken: idTokenString, rawNonce: nonce)
+//            let credential = OAuthProvider.credential(withProviderID: "apple.com", idToken: idTokenString, rawNonce: nonce)
+            // 'credential(withProviderID:idToken:rawNonce:)' is deprecated: Use `credential(providerID: AuthProviderID, idToken: String, rawNonce: String, accessToken: String? = nil) -> OAuthCredential` instead.
+            let credential = OAuthProvider.credential(providerID: AuthProviderID.apple, idToken: idTokenString, rawNonce: nonce)
             
             Auth.auth().signIn(with: credential) { (authResult, error) in
                 if let error = error {
@@ -184,6 +186,8 @@ class LoginViewModel: NSObject, ObservableObject, ASAuthorizationControllerDeleg
         do {
             try await AuthService.shared.signout()
             GIDSignIn.sharedInstance.signOut()
+            // 애플 계정 로그인된 거 로그아웃
+            
             
             DispatchQueue.main.async {
                 self.isSignedIn = false

@@ -191,6 +191,9 @@ struct OrderViewFromMyFavorite: View {
                 )
             }
         }
+        .navigationDestination(isPresented: $navigateToCart) {
+            CartView(user: user)
+        }
         .onChange(of: cartViewModel.alertMessage) {
             // alertMessage가 업데이트될 때만 알림을 표시
             if !cartViewModel.alertMessage.isEmpty {
