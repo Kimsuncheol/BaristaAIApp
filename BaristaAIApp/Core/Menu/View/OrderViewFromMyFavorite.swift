@@ -100,7 +100,7 @@ struct OrderViewFromMyFavorite: View {
                     }
                     .onTapGesture {
                         if let email = user?.email {
-                            let newCartItem = Cart(id: UUID().uuidString, customerEmail: email, drink_id: myfavorite.id, name: myfavorite.name, temperature: myfavorite.temperature, price: myfavorite.price, quantity: count, selected: true)
+                            let newCartItem = Cart(id: UUID().uuidString, customerEmail: email, drink_id: myfavorite.id, name: myfavorite.name, image: myfavorite.image, temperature: myfavorite.temperature, price: myfavorite.price, quantity: count, selected: true)
                             
                             insertOrUpdateCartItem(cartItem: newCartItem)
                         } else {
@@ -116,7 +116,7 @@ struct OrderViewFromMyFavorite: View {
                             
                             // paymentToken을 받는 클로저 구현
                             applePayHandler.onPaymentTokenReceived = { paymentToken in
-                                let newCartItem = Cart(id: UUID().uuidString, customerEmail: email, drink_id: myfavorite.id, name: myfavorite.name, temperature: myfavorite.temperature, price: myfavorite.price, quantity: count, selected: true)
+                                let newCartItem = Cart(id: UUID().uuidString, customerEmail: email, drink_id: myfavorite.id, name: myfavorite.name, image: myfavorite.image, temperature: myfavorite.temperature, price: myfavorite.price, quantity: count, selected: true)
                                 
                                 selectedItem.append(newCartItem)
                                 

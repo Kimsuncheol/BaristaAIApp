@@ -295,7 +295,7 @@ struct CartAndPaymentButtonsView: View {
                     if let email = user?.email {
                         // drink_id 를 유심히 볼 것! 음료 가격이 변동되었을 때 cart에 저장되어 있는 상태임에도 cart에 있는 그 음료의 가격과 동기화 안되어 있음
                         print("orderview - drink_id: \(String(describing: drink.id))")
-                        let newCartItem = Cart(id: UUID().uuidString, customerEmail: email, drink_id: drink.id, name: drink.name, temperature: drink.temperature, price: drink.price, quantity: count, selected: true)
+                        let newCartItem = Cart(id: UUID().uuidString, customerEmail: email, drink_id: drink.id, name: drink.name, image: drink.image, temperature: drink.temperature, price: drink.price, quantity: count, selected: true)
                         
                         insertOrUpdateCartItem(cartItem: newCartItem) // 카트 아이템 객체 전달
                     } else {
@@ -312,7 +312,7 @@ struct CartAndPaymentButtonsView: View {
                         
                         // paymentToken을 받는 클로저 구현
                         applePayHandler.onPaymentTokenReceived = { paymentToken in
-                            let newCartItem = Cart(id: UUID().uuidString, customerEmail: email, drink_id: drink.id, name: drink.name, temperature: drink.temperature, price: drink.price, quantity: count, selected: true)
+                            let newCartItem = Cart(id: UUID().uuidString, customerEmail: email, drink_id: drink.id, name: drink.name, image: drink.image, temperature: drink.temperature, price: drink.price, quantity: count, selected: true)
                             
                             selectedItem.append(newCartItem)
                             
