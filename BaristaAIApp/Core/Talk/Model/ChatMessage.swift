@@ -21,7 +21,7 @@ struct ChatMessage: Identifiable, Codable, Equatable {
     // 보낸 시간을 포맷팅하는 메서드 추가
    func formattedTime() -> String {
        let formatter = DateFormatter()
-       formatter.dateFormat = "HH:mm" // 24시간 형식의 시:분
+       formatter.dateFormat = "hh:mm a" 
        return formatter.string(from: createdAt)
    }
 }

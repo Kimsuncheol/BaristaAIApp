@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct Drink: Identifiable, Hashable, Codable {
-    var id: String?
+    var id: String
     var name: String
     let image: String?
     let flavor_profile: [String]
@@ -17,7 +17,7 @@ struct Drink: Identifiable, Hashable, Codable {
     let is_lactose_free: Bool   // 유당 유무
     var description: String     // 음료 설명
     var price: Int           // 음료 가격
-    var sales: Int
+    var sales: Int          // -> 유의
     
     // Add this initializer for Firestore decoding
     init(id: String, name: String, image: String?, flavor_profile: [String], type: String, temperature: String, is_lactose_free: Bool, description: String, price: Int, sales: Int) {
@@ -37,7 +37,7 @@ struct Drink: Identifiable, Hashable, Codable {
 extension Drink{
     var dictionary: [String: Any] {
         return [
-            "id": id ?? "",
+            "id": id,
             "name": name,
             "image": image ?? "",
             "flavor_profile": flavor_profile,

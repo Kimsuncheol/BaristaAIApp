@@ -49,7 +49,7 @@ struct DashBoardView: View {
                 
                 HStack {
                     Button {
-                        updateCurrentCollection(["Hot", "Cold"], 0)
+                        updateCurrentCollection(["Cold", "Hot"], 0)
                     } label: {
                         Text("Top 5 in All")
                             .font(.system(size: 14, weight: .bold))
@@ -93,19 +93,13 @@ struct DashBoardView: View {
                 } else {
                     // 음료가 있을 때만 LazyVGrid 출력
                     LazyVGrid(columns: columns) {
-//                        ForEach(viewModel.drinks, id: \.id) { drink in
-//                            HomeCoffeeCardView(user: user, colors: colors, drink: Binding(get: { drink }, set: { _ in }), NavigateToLogin: $NavigateToLogin, myFavoriteViewModel: myFavoriteViewModel)
-//                        }
-//                        ForEach(viewModel.topSellingDrinks[viewModel.collectionName.first ?? ""] ?? [], id: \.id) { drink in
-//                            HomeCoffeeCardView(user: user, colors: colors, drink: Binding(get: { drink }, set: { _ in }), NavigateToLogin: $NavigateToLogin, myFavoriteViewModel: myFavoriteViewModel)
-//                        }
-                        ForEach(viewModel.topSellingDrinks[viewModel.collectionName.contains("Hot") && viewModel.collectionName.contains("Cold") ? "All" : viewModel.collectionName.first ?? ""] ?? [], id: \.id) { drink in
+                        ForEach(viewModel.drinks, id: \.id) { drink in
                             HomeCoffeeCardView(user: user, colors: colors, drink: Binding(get: { drink }, set: { _ in }), NavigateToLogin: $NavigateToLogin, myFavoriteViewModel: myFavoriteViewModel)
                         }
                     }
                     .padding(.horizontal)
                     
-                    if viewModel.topSellingDrinks.isEmpty {
+                    if viewModel.drinks.isEmpty {
                         Text("No drinks available")
                             .font(.title2.bold())
                             .foregroundColor(.gray)
@@ -124,18 +118,16 @@ struct DashBoardView: View {
             myFavoriteViewModel.fetchFavorites(customerEmail: user?.email ?? "")
             startTimer()
         }
-//        .onAppear {
-//        }
         .onDisappear {
             stopTimer()
         }
     }
     
     private func updateCurrentCollection(_ collectionName: [String], _ index: Int) {
-        viewModel.collectionName = collectionName
         currentCollectionIndex = index
+        viewModel.collectionName = collectionName
         Task {
-            await viewModel.fetchDrinks()
+            await viewModel.fetechTop5DrinksByTemperature()
         }
     }
     

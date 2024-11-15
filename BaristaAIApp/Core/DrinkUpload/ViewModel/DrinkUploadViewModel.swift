@@ -25,7 +25,7 @@ class DrinkUploadViewModel: ObservableObject {
             group.enter() // 비동기 작업 시작
             
             // 중복성 검사: Firestore에서 이미 존재하는 음료인지 확인
-            db.collection("menu").document(drink.id!).getDocument { (document, error) in
+            db.collection("menu").document(drink.id).getDocument { (document, error) in
                 if let error = error {
                     print("Error checking document: \(error.localizedDescription)")
                     group.leave() // 작업 완료
@@ -35,7 +35,7 @@ class DrinkUploadViewModel: ObservableObject {
                 if let document = document, document.exists {
                     print("Drink \(drink.name) already exists. Skipping upload.")
                 } else {
-                    let docRef = self.db.collection("menu").document(drink.id!)
+                    let docRef = self.db.collection("menu").document(drink.id)
                     batch.setData(drink.dictionary, forDocument: docRef)
                     print("Adding drink: \(drink.name)")
                 }
@@ -58,7 +58,7 @@ class DrinkUploadViewModel: ObservableObject {
     // Update an existing drink in Firestore
     func updateDrink(_ drink: Drink) {
         do {
-            try db.collection("menu").document(drink.id!).setData(from: drink) { error in
+            try db.collection("menu").document(drink.id).setData(from: drink) { error in
                 if let error = error {
                     print("Error updating drink: \(error.localizedDescription)")
                 } else {
@@ -72,7 +72,7 @@ class DrinkUploadViewModel: ObservableObject {
     
     // Delete a drink from Firestore
     func deleteDrink(_ drink: Drink) {
-        db.collection("menu").document(drink.id!).delete { error in
+        db.collection("menu").document(drink.id).delete { error in
             if let error = error {
                 print("Error deleting drink: \(error.localizedDescription)")
             } else {

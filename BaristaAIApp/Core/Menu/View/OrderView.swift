@@ -28,7 +28,6 @@ struct OrderView: View {
         return myFavoriteViewModel.favorites.contains(where: { $0.drink_id == drink.id && $0.customerEmail == email })
     }
     
-    
     @State var NavigateToLogin: Bool = false
 
     @StateObject private var paymentHistoryViewModel = PaymentHistoryViewModel()
@@ -105,75 +104,78 @@ struct OrderView: View {
                 .frame(width: width)
             }
             
-            VStack(alignment: .leading, spacing: 10) {
-                Text("\(totalPrice) KRW")
-                    .font(.system(size: 20))
-                    .foregroundColor(.blue.opacity(0.8))
-                
-                Stepper(value: $count, in: 1...10) {
-                    Text("Quantity: \(count)")
-                }
-                
-                HStack {
-                    ZStack {
-                        Image(systemName: "cart.badge.plus")
-                            .resizable()
-                            .frame(width: 35, height: 35)
-                    }
-                    .padding(7.5)
-                    .foregroundColor(.black)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: 5)
-                            .stroke(Color.black, lineWidth: 1)
-                    }
-                    .onTapGesture {
-                        if let email = user?.email {
-                            // drink_id 를 유심히 볼 것! 음료 가격이 변동되었을 때 cart에 저장되어 있는 상태임에도 cart에 있는 그 음료의 가격과 동기화 안되어 있음
-                            print("orderview - drink_id: \(String(describing: drink.id))")
-                            let newCartItem = Cart(id: UUID().uuidString, customerEmail: email, drink_id: drink.id!, name: drink.name, price: drink.price, quantity: count, selected: true)
-                            
-                            insertOrUpdateCartItem(cartItem: newCartItem) // 카트 아이템 객체 전달
-                        } else {
-                            // 로그인 안한 경우 로그인 먼저 권유
-                            NavigateToLogin = true
-                        }
-                    }
-                    
-                    Spacer()
-                    
-                    PayWithApplePayButton(.order, action : {
-                        if let email = user?.email {
-                            applePayHandler.startApplePayProcess(totalPrice: totalPrice)
-                            
-                            // paymentToken을 받는 클로저 구현
-                            applePayHandler.onPaymentTokenReceived = { paymentToken in
-                                let newCartItem = Cart(id: UUID().uuidString, customerEmail: email, drink_id: drink.id!, name: drink.name, price: drink.price, quantity: count, selected: true)
-                                
-                                selectedItem.append(newCartItem)
-                                
-                                Task {
-                                    await paymentHistoryViewModel.savePaymentHistory(items: selectedItem, totalPrice: totalPrice, customerEmail: email, paymentToken: paymentToken)
-                                }
-                                
-                                paymentCompleted = true
-                            }
-                            
-                            applePayHandler.onCompletion = {
-                                // 결제 완료 후 추가 작업이 필요하면 여기에 작성 가능합니다.
-                            }
-                        } else {
-                            // 로그인 안한 경우 로그인 먼저 권유
-                            NavigateToLogin = true
-                        }
-                    })
-                    .payWithApplePayButtonStyle(.whiteOutline)
-                    .frame(width: UIScreen.main.bounds.width - 100, height: 50)
-                    .navigationDestination(isPresented: $paymentCompleted) {
-                        CheckOutCompleteView(user: user, purchasedCartItems: selectedItem, totalPrice: totalPrice, totalCount: count)
-                    }
-                }
-            }
-            .padding()
+//            VStack(alignment: .leading, spacing: 10) {
+//                Text("\(totalPrice) KRW")
+//                    .font(.system(size: 20))
+//                    .foregroundColor(.blue.opacity(0.8))
+//                
+//                Stepper(value: $count, in: 1...50) {
+//                    Text("Quantity: \(count)")
+//                }
+//                
+//                HStack {
+//                    ZStack {
+//                        Image(systemName: "cart.badge.plus")
+//                            .resizable()
+//                            .frame(width: 35, height: 35)
+//                    }
+//                    .padding(7.5)
+//                    .foregroundColor(.black)
+//                    .overlay {
+//                        RoundedRectangle(cornerRadius: 5)
+//                            .stroke(Color.black, lineWidth: 1)
+//                    }
+//                    .onTapGesture {
+//                        if let email = user?.email {
+//                            // drink_id 를 유심히 볼 것! 음료 가격이 변동되었을 때 cart에 저장되어 있는 상태임에도 cart에 있는 그 음료의 가격과 동기화 안되어 있음
+//                            print("orderview - drink_id: \(String(describing: drink.id))")
+//                            let newCartItem = Cart(id: UUID().uuidString, customerEmail: email, drink_id: drink.id!, name: drink.name, price: drink.price, quantity: count, selected: true)
+//                            
+//                            insertOrUpdateCartItem(cartItem: newCartItem) // 카트 아이템 객체 전달
+//                        } else {
+//                            // 로그인 안한 경우 로그인 먼저 권유
+//                            NavigateToLogin = true
+//                        }
+//                    }
+//                    
+//                    Spacer()
+//                    
+//                    PayWithApplePayButton(.order, action : {
+//                        if let email = user?.email {
+//                            applePayHandler.startApplePayProcess(totalPrice: totalPrice)
+//                            
+//                            // paymentToken을 받는 클로저 구현
+//                            applePayHandler.onPaymentTokenReceived = { paymentToken in
+//                                let newCartItem = Cart(id: UUID().uuidString, customerEmail: email, drink_id: drink.id!, name: drink.name, price: drink.price, quantity: count, selected: true)
+//                                
+//                                selectedItem.append(newCartItem)
+//                                
+//                                Task {
+//                                    await paymentHistoryViewModel.savePaymentHistory(items: selectedItem, totalPrice: totalPrice, customerEmail: email, paymentToken: paymentToken)
+//                                }
+//                                
+//                                paymentCompleted = true
+//                            }
+//                            
+//                            applePayHandler.onCompletion = {
+//                                // 결제 완료 후 추가 작업이 필요하면 여기에 작성 가능합니다.
+//                            }
+//                        } else {
+//                            // 로그인 안한 경우 로그인 먼저 권유
+//                            NavigateToLogin = true
+//                        }
+//                    })
+//                    .payWithApplePayButtonStyle(.whiteOutline)
+//                    .frame(width: UIScreen.main.bounds.width - 100, height: 50)
+//                    .navigationDestination(isPresented: $paymentCompleted) {
+//                        CheckOutCompleteView(user: user, purchasedCartItems: selectedItem, totalPrice: totalPrice, totalCount: count)
+//                    }
+//                }
+//            }
+//            .padding()
+            CartAndPaymentButtonsView(
+                user: user,
+                drink: $drink, count: $count, totalPrice: drink.price * count, navigateToCart: $navigateToCart, NavigateToLogin: $NavigateToLogin, selectedItem: $selectedItem, paymentCompleted: $paymentCompleted, applePayHandler: applePayHandler, cartViewModel: cartViewModel, paymentHistoryViewModel: paymentHistoryViewModel)
         }
         .fullScreenCover(isPresented: $NavigateToLogin) {
             LoginView()
@@ -222,10 +224,6 @@ struct OrderView: View {
             }
         }
         .onAppear {
-//            if let email = user?.email {
-//                IsContainedMyFavorite = myFavoriteViewModel.favorites.contains(where: { $0.drink_id == drink.id && $0.customerEmail == email })
-//                isTapped = IsContainedMyFavorite
-//            }
             myFavoriteViewModel.fetchFavorites(customerEmail: user?.email ?? "")
             resetStateVariables()
             selectedItem.removeAll()
@@ -255,4 +253,95 @@ struct OrderView: View {
 
 #Preview {
     ContentView()
+}
+
+struct CartAndPaymentButtonsView: View {
+    let user: User?
+    @Binding var drink: Drink
+    @Binding var count: Int
+    let totalPrice: Int
+    @Binding var navigateToCart: Bool
+    @Binding var NavigateToLogin: Bool
+    @Binding var selectedItem: [Cart]
+    @Binding var paymentCompleted: Bool
+    
+    let applePayHandler: ApplePayHandler
+    let cartViewModel: CartViewModel
+    let paymentHistoryViewModel: PaymentHistoryViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("\(totalPrice) KRW")
+                .font(.system(size: 20))
+                .foregroundColor(.blue.opacity(0.8))
+            
+            Stepper(value: $count, in: 1...50) {
+                Text("Quantity: \(count)")
+            }
+            
+            HStack {
+                ZStack {
+                    Image(systemName: "cart.badge.plus")
+                        .resizable()
+                        .frame(width: 35, height: 35)
+                }
+                .padding(7.5)
+                .foregroundColor(.black)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(Color.black, lineWidth: 1)
+                }
+                .onTapGesture {
+                    if let email = user?.email {
+                        // drink_id 를 유심히 볼 것! 음료 가격이 변동되었을 때 cart에 저장되어 있는 상태임에도 cart에 있는 그 음료의 가격과 동기화 안되어 있음
+                        print("orderview - drink_id: \(String(describing: drink.id))")
+                        let newCartItem = Cart(id: UUID().uuidString, customerEmail: email, drink_id: drink.id, name: drink.name, temperature: drink.temperature, price: drink.price, quantity: count, selected: true)
+                        
+                        insertOrUpdateCartItem(cartItem: newCartItem) // 카트 아이템 객체 전달
+                    } else {
+                        // 로그인 안한 경우 로그인 먼저 권유
+                        NavigateToLogin = true
+                    }
+                }
+                
+                Spacer()
+                
+                PayWithApplePayButton(.order, action : {
+                    if let email = user?.email {
+                        applePayHandler.startApplePayProcess(totalPrice: drink.price * count)
+                        
+                        // paymentToken을 받는 클로저 구현
+                        applePayHandler.onPaymentTokenReceived = { paymentToken in
+                            let newCartItem = Cart(id: UUID().uuidString, customerEmail: email, drink_id: drink.id, name: drink.name, temperature: drink.temperature, price: drink.price, quantity: count, selected: true)
+                            
+                            selectedItem.append(newCartItem)
+                            
+                            Task {
+                                await paymentHistoryViewModel.savePaymentHistory(items: selectedItem, totalPrice: drink.price * count, customerEmail: email, paymentToken: paymentToken)
+                            }
+                            
+                            paymentCompleted = true
+                        }
+                        
+                        applePayHandler.onCompletion = {
+                            // 결제 완료 후 추가 작업이 필요하면 여기에 작성 가능합니다.
+                        }
+                    } else {
+                        // 로그인 안한 경우 로그인 먼저 권유
+                        NavigateToLogin = true
+                    }
+                })
+                .payWithApplePayButtonStyle(.whiteOutline)
+                .frame(width: UIScreen.main.bounds.width - 100, height: 50)
+                .navigationDestination(isPresented: $paymentCompleted) {
+                    CheckOutCompleteView(user: user, purchasedCartItems: selectedItem, totalPrice: drink.price * count, totalCount: count)
+                }
+            }
+        }
+        .padding()
+    }
+    
+    private func insertOrUpdateCartItem(cartItem: Cart) {
+        cartViewModel.insertOrUpdateCartItem(drink: cartItem, count: cartItem.quantity, customerEmail: user!.email)
+    }
 }

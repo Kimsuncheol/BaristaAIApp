@@ -10,8 +10,8 @@ import Speech
 
 struct InputTextView: View {
     @Binding var text: String
-    @FocusState var isFocused
-    
+    @Binding var isFocused: Bool
+    @FocusState var textFieldIsFocused
     // 음성 인식을 위한 프로퍼티
     @State private var speechRecognizer = SFSpeechRecognizer()
     @State private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
@@ -20,18 +20,33 @@ struct InputTextView: View {
     
     var onSend: (String) -> Void
     
+    private let maxEditorHeight: CGFloat = 120
+    @State private var textHeight: CGFloat = 50
+    
     var body: some View {
-        ZStack(alignment: .trailing) {
-            TextField("", text: $text)
-                .padding(.leading)
-                .frame(width: UIScreen.main.bounds.width - 40, height: 50)
-                .focused($isFocused)
-                .background(Color.gray.opacity(0.3), in: RoundedRectangle(cornerRadius: 12))
+        HStack(alignment: .bottom) {
+            TextField("", text: $text, axis: .vertical)
+                .focused($textFieldIsFocused)
                 .autocapitalization(.none)
                 .disableAutocorrection(true)
+                .lineLimit(7)
+//                .frame(maxWidth: .infinity)
+                .padding(8)
+                .padding(.leading, 3)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.gray.opacity(0.3))
+                )
+                .onChange(of: textFieldIsFocused) {
+                    isFocused = textFieldIsFocused
+                }
+                .onChange(of: isFocused) {
+                    textFieldIsFocused = isFocused
+                }
             
+            // 음성인식 관련 코드 점검해야 함. 작동 안됨... 누르면 앱이 멈춰버림
             HStack(spacing: 10) {
-                if text.isEmpty {
+                if !textFieldIsFocused {
                     Button {
                         startRecording()
                     } label: {
@@ -44,9 +59,9 @@ struct InputTextView: View {
                 
                 HStack(alignment: .center) {
                     Button {
-                        onSend(text) // 전송 버튼 클릭 시 클로저 실행
+                        onSend(text)
                     } label: {
-                        Image(systemName: "arrow.up")
+                        Image(systemName: "paperplane.fill")
                             .resizable()
                             .frame(width: 15, height: 15)
                     }
@@ -55,10 +70,21 @@ struct InputTextView: View {
                 .background(Color.yellow)
                 .clipShape(Circle())
             }
-            .padding(.trailing, 8)
+//            .padding(.trailing, 8)
         }
+        .frame(width: UIScreen.main.bounds.width - 20)
     }
     
+    private func calculateTextHeight() {
+           let textRect = text.boundingRect(
+               with: CGSize(width: UIScreen.main.bounds.width - 98, height: .greatestFiniteMagnitude),
+               options: .usesLineFragmentOrigin,
+               attributes: [.font: UIFont.systemFont(ofSize: 17)],
+               context: nil
+           )
+           textHeight = textRect.height + 20 // Additional padding for text height
+       }
+
     // 음성 인식 시작 함수
     private func startRecording() {
         // 권한 요청
@@ -118,3 +144,37 @@ struct InputTextView: View {
 //    TalkView()
     ContentView()
 }
+
+
+//TextField("", text: $text)
+//    .padding(.leading)
+//    .frame(width: textFieldIsFocused ? geometry.size.width - 58 : geometry.size.width - 98, height: geometry.size.height)
+//    .focused($textFieldIsFocused)
+//    .padding(.trailing)
+//    .autocapitalization(.none)
+//    .disableAutocorrection(true)
+//    .onChange(of: textFieldIsFocused) {
+//        isFocused = textFieldIsFocused
+//    }
+//    .onChange(of: isFocused) {
+//        textFieldIsFocused = isFocused
+//    }
+
+
+//TextEditor("",text: $text, axis: .vertical)
+//    .focused($textFieldIsFocused)
+//    .padding()
+//    .frame(
+////                            width: textFieldIsFocused ? geometry.size.width - 58 : geometry.size.width - 98,
+//        height: min(CGFloat(textLineCount()) * 50, maxEditorHeight)
+//    )
+//    .scrollContentBackground(.hidden)
+//    .background(Color.clear)
+//    .autocapitalization(.none)
+//    .disableAutocorrection(true)
+//    .onChange(of: textFieldIsFocused) {
+//        isFocused = textFieldIsFocused
+//    }
+//    .onChange(of: isFocused) {
+//        textFieldIsFocused = isFocused
+//    }

@@ -13,6 +13,8 @@ import Combine
 class ChatViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = [] // 채팅 메시지 목록
     @Published var text: String = "" // 입력된 메시지 내용
+    @Published var ChatBotMessage: String = ""  // 챗봇 메시지 내용
+    @Published var isLoadingResponse: Bool = false
     
     private var db = Firestore.firestore()
     private var listenerRegistration: ListenerRegistration? // Firestore 리스너를 관리하기 위한 변수
@@ -63,33 +65,18 @@ class ChatViewModel: ObservableObject {
 
         // 아랫 부분 100% 오류 발생할 거임. 지금은 탐지를 못하는 중이지만, 모든 customer에게 같은 메시지를 전송하게 될 거라서
         // customerEmail 속성을 없애고 senderId에 customerEmail 넣었으니 아마 오류 해결되었을 듯
-        if let customerEmail = customerEmail {
-            // 내가 챗봇에게 메시지 보내는 거고
-            newMessage = ChatMessage(
-                text: text,
+        newMessage = ChatMessage(
+            text: text,
 //                customerEmail: customerEmail,
-                createdAt: Date(),
-                senderId: customerEmail,
-                senderName: userName,
-                receiverId: chatbotId,
-                receiverName: chatbotName
-            )
-        } else {
-            // 챗봇으로부터 답장 메시지를 받는 경우임
-            newMessage = ChatMessage(
-                text: text,
-//                customerEmail: "",      // 이거 유의
-                createdAt: Date(),
-                senderId: chatbotId,
-                senderName: chatbotName,
-                receiverId: customerEmail!,     // 이거 관심
-                receiverName: userName
-            )
-        }
+            createdAt: Date(),
+            senderId: customerEmail,
+            senderName: userName,
+            receiverId: chatbotId,
+            receiverName: chatbotName
+        )
         
         do {
             _ = try db.collection("messages").addDocument(from: newMessage)
-//            self.text = ""   // To reset after transmit a message
             DispatchQueue.main.async {
                 self.text = ""   // To reset after transmit a message
             }
@@ -103,6 +90,8 @@ class ChatViewModel: ObservableObject {
     }
     
     private func callChatbotAPI(with message: String, conversation: [Utterance], customerEmail: String?) {
+        self.isLoadingResponse = true
+        
         // 챗봇 API 호출
         guard let url = URL(string: "https://norchestra.maum.ai/harmonize/dosmart") else { return }
 
@@ -111,14 +100,6 @@ class ChatViewModel: ObservableObject {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("no-cache", forHTTPHeaderField: "Cache-Control")
         
-//        let parameters: [String: Any] = [
-//            "app_id": "bf8df488-ac09-5c0d-a3b5-400760af4b18",
-//            "name": "maal_barista_sejong-capstone_stream",
-//            "item": "mxCell#13",
-//            "param": [
-//                "utterances": [message]
-//            ]
-//        ]
         // 멀티턴 대화를 위한 utterances 배열
         let requestBody = APIRequest(
             app_id: "77e64f9d-a586-5ec4-8b6e-b88a91d56a93",
@@ -139,8 +120,6 @@ class ChatViewModel: ObservableObject {
             ]
         )
         
-//        request.httpBody = try? JSONSerialization.data(withJSONObject: parameters, options: [])
-        
         do {
             request.httpBody = try JSONEncoder().encode(requestBody)
         } catch {
@@ -149,47 +128,35 @@ class ChatViewModel: ObservableObject {
         }
         
         URLSession.shared.dataTaskPublisher(for: request)
-//            .tryMap { $0.data }
             .tryMap { response in
-                // 응답 데이터를 확인하기 위해 문자열로 변환
                 if let string = String(data: response.data, encoding: .utf8) {
-                    print("API 응답: \(string)") // 응답 내용 출력
+                    DispatchQueue.main.async {
+                        print("API 응답: \(string)") // 응답 내용 출력
+                        self.isLoadingResponse = false
+//                        self.text = string
+                    }
                 }
+                
                 return response.data
-//                do {
-//                    // 응답 데이터를 문자열로 출력
-//                    if let string = String(data: response.data, encoding: .utf8) {
-//                        print("API 응답: \(string)") // 응답 내용을 출력하여 확인
-//                    }
-//                    
-//                    // 응답 데이터를 JSON으로 디코딩
-//                    let decodedResponse = try JSONDecoder().decode(APIResponse.self, from: response.data)
-//                    self.handleChatbotResponse(decodedResponse, customerEmail: customerEmail)
-//                } catch {
-//                    print("Error decoding response: \(error)")
-//                }
             }
-            .decode(type: APIResponse.self, decoder: JSONDecoder())
-            .receive(on: DispatchQueue.main)
             .sink(receiveCompletion: { completion in
                 if case .failure(let error) = completion {
                     print("Error calling API: \(error)")
+                    self.isLoadingResponse = false
                 }
-            }, receiveValue: { [weak self] response in
-                self?.handleChatbotResponse(response, customerEmail: customerEmail)
+            }, receiveValue: { [weak self] data in
+                if let responseString = String(data: data, encoding: .utf8) {
+                    self?.handleChatbotResponse(responseString, customerEmail: customerEmail)
+                }
             })
             .store(in: &cancellables)
     }
     
-    private func handleChatbotResponse(_ response: APIResponse, customerEmail: String?) {
+    private func handleChatbotResponse(_ response: String, customerEmail: String?) {
 //        guard let message = response.utterances.first else { return }
-        guard let firstItem = response.response.first else { return }
-
-        
         let newMessage = ChatMessage(
             id: UUID().uuidString,
-            text: "메뉴: \(firstItem.menu), 수량: \(firstItem.quantity)",
-//            text: "메뉴: \(firstItem.menu), 수량: \(firstItem.quantity)",
+            text: response,
             createdAt: Date(),
             senderId: chatbotId,
             senderName: chatbotName,
@@ -203,7 +170,7 @@ class ChatViewModel: ObservableObject {
             print("Error sending message: \(error)")
         }
         
-        let assistantUtterance = Utterance(role: "ROLE_ASSISTANT", content: "메뉴: \(firstItem.menu), 수량: \(firstItem.quantity)")
+        let assistantUtterance = Utterance(role: "ROLE_ASSISTANT", content: response)
         conversation.append(assistantUtterance) // 멀티턴 대화를 위한 챗봇 응답 추가
     }
 }
@@ -236,11 +203,23 @@ struct Config: Encodable {
 }
 
 // API 응답 모델
-struct APIResponse: Decodable {
-    let response: [MenuItem]
-}
+//struct APIResponse: Decodable {
+//    let response: [MenuItem]
+//}
 
 struct MenuItem: Decodable {
     let menu: String
     let quantity: String
 }
+
+
+//// 챗봇으로부터 답장 메시지를 받는 경우임
+//newMessage = ChatMessage(
+//    text: text,
+////                customerEmail: "",      // 이거 유의
+//    createdAt: Date(),
+//    senderId: chatbotId,
+//    senderName: chatbotName,
+//    receiverId: customerEmail!,     // 이거 관심
+//    receiverName: userName
+//)

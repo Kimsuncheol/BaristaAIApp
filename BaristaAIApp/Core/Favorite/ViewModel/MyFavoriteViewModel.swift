@@ -47,7 +47,7 @@ class MyFavoriteViewModel: ObservableObject {
         // 중복 확인 (사용자 이메일과 음료 ID로 중복 확인)
         
         // drinkID에 myfavorite.drink_id 대입했었음
-        checkForDuplicate(drinkID: drink.id!, customerEmail: customerEmail!) { [weak self] exists in
+        checkForDuplicate(drinkID: drink.id, customerEmail: customerEmail!) { [weak self] exists in
             guard let self = self else { return }
             if exists {
                 print("\(drink.name) is already in favorites. Removing from favorites.")
@@ -63,7 +63,7 @@ class MyFavoriteViewModel: ObservableObject {
             
             let newFavoriteItem = MyFavorite(
                 id: UUID().uuidString,
-                drink_id: drink.id!,
+                drink_id: drink.id,
                 customerEmail: customerEmail!, // 현재 사용자의 이메일로 설정
                 name: drink.name,
                 image: drink.image,
