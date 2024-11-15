@@ -12,19 +12,19 @@ struct Cart: Identifiable, Codable, Hashable {
     var customerEmail: String
     let drink_id: String
     var name: String
-//    let image: String?
+    let image: String?
     var temperature: String
     var price: Int
     var totalPrice: Int { price * quantity }
     var quantity: Int
     var selected: Bool = true
     
-    init(id: String, customerEmail: String, drink_id: String, name: String, /* image: String?, */ temperature: String, price: Int, quantity: Int, selected: Bool) {
+    init(id: String, customerEmail: String, drink_id: String, name: String, image: String?, temperature: String, price: Int, quantity: Int, selected: Bool) {
            self.id = id
         self.customerEmail = customerEmail
            self.drink_id = drink_id
            self.name = name
-//           self.image = image
+           self.image = image
         self.temperature = temperature
            self.price = price
            self.quantity = quantity
@@ -38,7 +38,7 @@ struct Cart: Identifiable, Codable, Hashable {
             "drink_id": drink_id,
             "name": name,
             "temperature": temperature,
-//            "image": image as Any,      // 이걸 주목할 것
+            "image": image as Any,      // 이걸 주목할 것
             "price": price,
             "totalPrice": totalPrice,
             "quantity": quantity,
@@ -52,7 +52,7 @@ struct Cart: Identifiable, Codable, Hashable {
               let drink_id = dictionary["drink_id"] as? String,
               let name = dictionary["name"] as? String,
                 let temperature = dictionary["temperature"] as? String,
-//              let image = dictionary["image"] as? String?,
+              let image = dictionary["image"] as? String?,
               let price = dictionary["price"] as? Int,
               let quantity = dictionary["quantity"] as? Int,
               let selected = dictionary["selected"] as? Bool else {
@@ -64,7 +64,7 @@ struct Cart: Identifiable, Codable, Hashable {
         self.drink_id = drink_id
         self.name = name
         self.temperature = temperature
-//        self.image = image
+        self.image = image
         self.price = price
         self.quantity = quantity
         self.selected = selected
