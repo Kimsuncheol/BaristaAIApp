@@ -13,19 +13,26 @@ import Combine
 class ChatViewModel: ObservableObject {
     @Published var messages: [ChatMessage] = [] // 채팅 메시지 목록
     @Published var text: String = "" // 입력된 메시지 내용
-    @Published var ChatBotMessage: String = ""  // 챗봇 메시지 내용
-    @Published var isLoadingResponse: Bool = false
+    @Published var isLoadingResponse = false // 챗봇 응답 로딩 상태
     
     private var db = Firestore.firestore()
     private var listenerRegistration: ListenerRegistration? // Firestore 리스너를 관리하기 위한 변수
-    private let userName = Auth.auth().currentUser?.displayName ?? "User" // 현재 사용자의 이름
-    private let chatbotId = "chatbot" // 대화형 엔진의 ID
+    private let userName = Auth.auth().currentUser?.displayName ?? "User" // 현재 사용자의 이름 -> LoginView 진입할 때 버벅거림의 원인
+    var chatbotId = "chatbot" // 대화형 엔진의 ID
     let chatbotName = "Barista AI" // 대화형 엔진의 이름
     private var conversation: [Utterance] = [] // 대화를 저장하는 배열
     private var cancellables = Set<AnyCancellable>()
-
+    
+    let collectionName = "chatRooms"
+    let collectionName2 = "\(Auth.auth().currentUser?.email ?? "")/chatbot"
+    
+    private var chatRoomId: String {
+        guard let userEmail = Auth.auth().currentUser?.email else { return "" }
+        return "\(userEmail)_\(chatbotId)"
+    }
+    
     init() {
-        print("customerEmail : \(Auth.auth().currentUser?.email ?? "from chatViewModel - no user")")
+        print("customerEmail : \(Auth.auth().currentUser?.email ?? "from chatViewModel - no user")")    // 이 부분 유의해야
         if let customerEmail = Auth.auth().currentUser?.email {     // 이부분도 유의
             fetchMessages(customerEmail: customerEmail)
         }
@@ -35,39 +42,84 @@ class ChatViewModel: ObservableObject {
         listenerRegistration?.remove()
     }
     
-    // Firestore에서 메시지를 가져오고 실시간 업데이트 감지
     func fetchMessages(customerEmail: String) {
-        // 기존 리스너를 제거하여 중복 리스너 방지
         listenerRegistration?.remove()
         
-        listenerRegistration = db.collection("messages")
-            .whereField("senderId", in: [customerEmail, chatbotId])        // 이 부분도 유의
+        let chatRoomRef = db.collection(collectionName).document(chatRoomId)
+        
+        listenerRegistration = chatRoomRef.collection("messages")
+            .whereField("senderId", in: [customerEmail, chatbotId])
             .whereField("receiverId", in: [customerEmail, chatbotId])
-            .order(by: "createdAt")
+            .order(by: "createdAt", descending: false)
             .addSnapshotListener { [weak self] querySnapshot, error in
+                guard let self = self else { return }
+
                 if let error = error {
                     print("Error fetching messages: \(error)")
                     return
                 }
                 
-                self?.messages = querySnapshot?.documents.compactMap { document -> ChatMessage? in
+//                self?.messages = querySnapshot?.documents.compactMap { document in
+//                    try? document.data(as: ChatMessage.self)
+//                } ?? []
+                // 기존 메시지를 배열에 추가
+                let fetchedMessages = querySnapshot?.documents.compactMap { document in
                     try? document.data(as: ChatMessage.self)
                 } ?? []
+                
+                DispatchQueue.main.async {
+                    self.messages = fetchedMessages
+                    self.setupListener(customerEmail: customerEmail)
+                }
+//                self?.isLoadingResponse = false
             }
     }
     
+    /// 실시간 리스너 설정
+    func setupListener(customerEmail: String) {
+        listenerRegistration?.remove()
+        
+        let chatRoomRef = db.collection(collectionName).document(chatRoomId)
+        
+        listenerRegistration = chatRoomRef.collection("messages")
+            .whereField("senderId", in: [customerEmail, chatbotId])
+            .whereField("receiverId", in: [customerEmail, chatbotId])
+            .order(by: "createdAt", descending: false)
+            .addSnapshotListener { [weak self] querySnapshot, error in
+                guard let self = self else { return }
+
+                if let error = error {
+                    print("Error fetching messages: \(error)")
+                    return
+                }
+                
+                guard let changes = querySnapshot?.documentChanges else { return }
+                
+                DispatchQueue.main.async {
+                    for change in changes {
+                        if change.type == .added {
+                            if let newMessage = try? change.document.data(as: ChatMessage.self) {
+                                if !self.messages.contains(where: { $0.id == newMessage.id }) {
+                                    self.messages.append(newMessage)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+    }
+    
+    
     // Firestore에 메시지 전송
     func sendMessage(customerEmail: String?) {
-        guard !text.isEmpty else { return }
-        
-        let newMessage: ChatMessage
-        let userUtterance = Utterance(role: "ROLE_USER", content: text) // 사용자 메시지
+        guard let customerEmail = customerEmail, !text.isEmpty else { return }
+
+        let chatRoomRef = db.collection(collectionName).document(chatRoomId)
 
         // 아랫 부분 100% 오류 발생할 거임. 지금은 탐지를 못하는 중이지만, 모든 customer에게 같은 메시지를 전송하게 될 거라서
         // customerEmail 속성을 없애고 senderId에 customerEmail 넣었으니 아마 오류 해결되었을 듯
-        newMessage = ChatMessage(
+        let newMessage = ChatMessage(
             text: text,
-//                customerEmail: customerEmail,
             createdAt: Date(),
             senderId: customerEmail,
             senderName: userName,
@@ -75,22 +127,33 @@ class ChatViewModel: ObservableObject {
             receiverName: chatbotName
         )
         
+        chatRoomRef.setData([
+            "chatRoomId": chatRoomId,
+            "participants": [customerEmail, chatbotId],
+            "lastMessage": text,
+            "lastUpdate": Timestamp()
+        ], merge: true)
+        
         do {
-            _ = try db.collection("messages").addDocument(from: newMessage)
+//            _ = try db.collection(collectionName).addDocument(from: newMessage)
+            _ = try chatRoomRef.collection("messages").addDocument(from: newMessage)
             DispatchQueue.main.async {
                 self.text = ""   // To reset after transmit a message
+                self.isLoadingResponse = true
             }
         } catch {
             print("Error sending message: \(error)")
         }
         
+        let userUtterance = Utterance(role: "ROLE_USER", content: text) // 사용자 메시지
         conversation.append(userUtterance)
+        
 
         callChatbotAPI(with: text, conversation: conversation, customerEmail: customerEmail)
     }
     
     private func callChatbotAPI(with message: String, conversation: [Utterance], customerEmail: String?) {
-        self.isLoadingResponse = true
+//        self.isLoadingResponse = true
         
         // 챗봇 API 호출
         guard let url = URL(string: "https://norchestra.maum.ai/harmonize/dosmart") else { return }
@@ -132,8 +195,7 @@ class ChatViewModel: ObservableObject {
                 if let string = String(data: response.data, encoding: .utf8) {
                     DispatchQueue.main.async {
                         print("API 응답: \(string)") // 응답 내용 출력
-                        self.isLoadingResponse = false
-//                        self.text = string
+//                        self.isLoadingResponse = false
                     }
                 }
                 
@@ -155,7 +217,7 @@ class ChatViewModel: ObservableObject {
     private func handleChatbotResponse(_ response: String, customerEmail: String?) {
 //        guard let message = response.utterances.first else { return }
         let newMessage = ChatMessage(
-            id: UUID().uuidString,
+//            id: UUID().uuidString,
             text: response,
             createdAt: Date(),
             senderId: chatbotId,
@@ -164,8 +226,22 @@ class ChatViewModel: ObservableObject {
             receiverName: userName
         )
         
+        let chatRoomRef = db.collection(collectionName).document(chatRoomId)
+        
         do {
-            try db.collection("messages").addDocument(from: newMessage)
+            try chatRoomRef.setData([
+                "chatRoomId": chatRoomId,
+                "participants": [customerEmail, chatbotId],
+                "lastMessage": response,
+                "lastUpdate": Timestamp()
+            ], merge: true)
+            
+            try chatRoomRef.collection("messages").addDocument(from: newMessage)
+            
+//            try db.collection(collectionName).addDocument(from: newMessage)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                self.isLoadingResponse = false
+            }
         } catch {
             print("Error sending message: \(error)")
         }
@@ -202,24 +278,8 @@ struct Config: Encodable {
     let repetition_penalty: Double
 }
 
-// API 응답 모델
-//struct APIResponse: Decodable {
-//    let response: [MenuItem]
-//}
-
 struct MenuItem: Decodable {
     let menu: String
     let quantity: String
 }
 
-
-//// 챗봇으로부터 답장 메시지를 받는 경우임
-//newMessage = ChatMessage(
-//    text: text,
-////                customerEmail: "",      // 이거 유의
-//    createdAt: Date(),
-//    senderId: chatbotId,
-//    senderName: chatbotName,
-//    receiverId: customerEmail!,     // 이거 관심
-//    receiverName: userName
-//)

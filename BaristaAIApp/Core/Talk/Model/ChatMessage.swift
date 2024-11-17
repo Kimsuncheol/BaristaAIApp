@@ -8,12 +8,12 @@
 import Foundation
 import FirebaseFirestore
 
-struct ChatMessage: Identifiable, Codable, Equatable {
+struct ChatMessage: Identifiable, Codable, Equatable, Hashable {
     @DocumentID var id: String?
     var text: String
 //    var customerEmail: String?
     var createdAt: Date
-    var senderId: String?
+    var senderId: String
     var senderName: String
     var receiverId: String
     var receiverName: String

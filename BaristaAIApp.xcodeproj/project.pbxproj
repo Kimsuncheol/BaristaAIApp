@@ -11,6 +11,7 @@
 		0B2373422CBFF51500858E82 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = 0B2373412CBFF51500858E82 /* GoogleSignIn */; };
 		0B2746202CB69EA300281655 /* GIFImage in Frameworks */ = {isa = PBXBuildFile; productRef = 0B27461F2CB69EA300281655 /* GIFImage */; };
 		0B35DCEE2CBF7D6E00EEAD81 /* LinkNavigator in Frameworks */ = {isa = PBXBuildFile; productRef = 0B35DCED2CBF7D6E00EEAD81 /* LinkNavigator */; };
+		0B3DFCA32CE9C50C00F65F81 /* Lottie in Frameworks */ = {isa = PBXBuildFile; productRef = 0B3DFCA22CE9C50C00F65F81 /* Lottie */; };
 		0B42A0FE2CE22E090028C2E8 /* SwiftUIChipGroup in Frameworks */ = {isa = PBXBuildFile; productRef = 0B42A0FD2CE22E090028C2E8 /* SwiftUIChipGroup */; };
 		0B8A088A2CA4732D00B40AF7 /* FirebaseAnalytics in Frameworks */ = {isa = PBXBuildFile; productRef = 0B8A08892CA4732D00B40AF7 /* FirebaseAnalytics */; };
 		0B8A088C2CA4732D00B40AF7 /* FirebaseAuth in Frameworks */ = {isa = PBXBuildFile; productRef = 0B8A088B2CA4732D00B40AF7 /* FirebaseAuth */; };
@@ -84,6 +85,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				0B8A088E2CA4732D00B40AF7 /* FirebaseDatabase in Frameworks */,
+				0B3DFCA32CE9C50C00F65F81 /* Lottie in Frameworks */,
 				0B2746202CB69EA300281655 /* GIFImage in Frameworks */,
 				0B2373422CBFF51500858E82 /* GoogleSignIn in Frameworks */,
 				0B1F6D832CC0A931007A7AA6 /* GoogleSignInSwift in Frameworks */,
@@ -170,6 +172,7 @@
 				0B2373412CBFF51500858E82 /* GoogleSignIn */,
 				0B1F6D822CC0A931007A7AA6 /* GoogleSignInSwift */,
 				0B42A0FD2CE22E090028C2E8 /* SwiftUIChipGroup */,
+				0B3DFCA22CE9C50C00F65F81 /* Lottie */,
 			);
 			productName = BaristaAIApp;
 			productReference = 0B8A08322CA472D900B40AF7 /* BaristaAIApp.app */;
@@ -262,6 +265,7 @@
 				0B35DCEC2CBF7D6E00EEAD81 /* XCRemoteSwiftPackageReference "LinkNavigator" */,
 				0B2373402CBFF51500858E82 /* XCRemoteSwiftPackageReference "GoogleSignIn-iOS" */,
 				0B42A0FC2CE22E090028C2E8 /* XCRemoteSwiftPackageReference "SwiftUIChipGroup" */,
+				0B3DFCA12CE9C50C00F65F81 /* XCRemoteSwiftPackageReference "lottie-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 0B8A08332CA472D900B40AF7 /* Products */;
@@ -657,6 +661,14 @@
 				minimumVersion = 1.2.8;
 			};
 		};
+		0B3DFCA12CE9C50C00F65F81 /* XCRemoteSwiftPackageReference "lottie-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/airbnb/lottie-ios";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 4.5.0;
+			};
+		};
 		0B42A0FC2CE22E090028C2E8 /* XCRemoteSwiftPackageReference "SwiftUIChipGroup" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/Open-Bytes/SwiftUIChipGroup.git";
@@ -719,6 +731,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 0B35DCEC2CBF7D6E00EEAD81 /* XCRemoteSwiftPackageReference "LinkNavigator" */;
 			productName = LinkNavigator;
+		};
+		0B3DFCA22CE9C50C00F65F81 /* Lottie */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 0B3DFCA12CE9C50C00F65F81 /* XCRemoteSwiftPackageReference "lottie-ios" */;
+			productName = Lottie;
 		};
 		0B42A0FD2CE22E090028C2E8 /* SwiftUIChipGroup */ = {
 			isa = XCSwiftPackageProductDependency;

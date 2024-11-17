@@ -6,13 +6,39 @@
 //
 
 import SwiftUI
+import Lottie
+
+struct LottieView: UIViewRepresentable {
+    var filename: String
+    var loopMode: LottieLoopMode = .loop
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView(frame: .zero)
+
+        let animationView = LottieAnimationView(name: filename)
+        animationView.loopMode = loopMode
+        animationView.play()
+
+        animationView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(animationView)
+
+        NSLayoutConstraint.activate([
+            animationView.heightAnchor.constraint(equalTo: view.heightAnchor),
+            animationView.widthAnchor.constraint(equalTo: view.widthAnchor)
+        ])
+
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        // 애니메이션 업데이트가 필요할 경우 구현
+    }
+}
 
 struct ChatMessageView: View {
     let user: User?
-    @StateObject private var viewModel = ChatViewModel() // ChatViewModel 인스턴스 생성
-    let index: Int
+    @ObservedObject var viewModel: ChatViewModel
     let message: ChatMessage
-    let showTime: Bool
     
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
@@ -21,9 +47,6 @@ struct ChatMessageView: View {
                 Spacer()
                 
                 HStack(alignment: .bottom) {
-                    // 보낸 시간 표시 (조건에 따라)
-//                    if showTime {
-//                    }
                     Text(message.formattedTime())
                         .font(.caption2)
                         .foregroundColor(.gray)
@@ -44,58 +67,39 @@ struct ChatMessageView: View {
                         .font(.caption)
                         .foregroundColor(.gray)
                     
-                    if viewModel.isLoadingResponse {
-                        TypingAnimationView()
-                    }  else {
+                    var showResponse = message.senderId == viewModel.chatbotId && viewModel.isLoadingResponse && message.id == viewModel.messages.last?.id
+                    
+                    ZStack(alignment: .leading) {
+                        LottieView(filename: "Animation - 1731824848115")
+                            .frame(width: 56, height: 56)
+                            .opacity(showResponse ? 1 : 0)
+                        
                         HStack(alignment: .bottom) {
                             Text(message.text)
                                 .padding(10)
                                 .background(Color.gray.opacity(0.2))
                                 .cornerRadius(8)
+                                .transition(.opacity)
+                            
                             
                             Text(message.formattedTime())
                                 .font(.caption2)
                                 .foregroundColor(.gray)
                                 .fixedSize(horizontal: false, vertical: true)
+                                .transition(.opacity)
+                            
+                            //                            if let matchDrinks = viewModel.
                         }
+                        .opacity(showResponse ? 0 : 1)
                     }
+                    .animation(.easeInOut, value: viewModel.isLoadingResponse)
                 }
                 Spacer()
             }
         }
-        .padding(.top, index == 0 ? 9 : 0)
-        .padding(.bottom, index == 0 ? 5 : 0)
-        .padding(.vertical, index > 0 && index < viewModel.messages.count - 1 ? 5 : 0)
-        .padding(.top, viewModel.messages.count - 1 == index ? 5 : 0)
-        .id(index)
     }
 }
 
 #Preview {
     ContentView()
-}
-
-// 로딩 애니메이션용 TypingAnimationView
-struct TypingAnimationView: View {
-    @State private var dotCount = 1
-    
-    var body: some View {
-        HStack(spacing: 2) {
-            ForEach(0..<dotCount, id: \.self) { _ in
-                Circle()
-                    .frame(width: 8, height: 8)
-                    .foregroundColor(.gray)
-            }
-        }
-        .onAppear {
-//            withAnimation(Animation.linear(duration: 0.5).repeatForever(autoreverses: true)) {
-//                dotCount = dotCount % 3 + 1
-//            }
-            Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
-                withAnimation {
-                    dotCount = dotCount % 3 + 1
-                }
-            }
-        }
-    }
 }
