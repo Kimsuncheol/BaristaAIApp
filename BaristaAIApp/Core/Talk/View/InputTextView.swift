@@ -59,6 +59,7 @@ struct InputTextView: View {
                 
                 HStack(alignment: .center) {
                     Button {
+                        print("text: \(text)")
                         onSend(text)
                     } label: {
                         Image(systemName: "paperplane.fill")

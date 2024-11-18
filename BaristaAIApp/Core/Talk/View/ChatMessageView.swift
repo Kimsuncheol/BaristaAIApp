@@ -56,7 +56,7 @@ struct ChatMessageView: View {
                         .background(Color.blue.opacity(0.2))
                         .cornerRadius(8)
                 }
-            } else {
+            } else if message.senderId == viewModel.chatbotId {
                 // 대화형 엔진이 보낸 메시지
                 Image("bot")
                     .resizable()
@@ -67,7 +67,8 @@ struct ChatMessageView: View {
                         .font(.caption)
                         .foregroundColor(.gray)
                     
-                    var showResponse = message.senderId == viewModel.chatbotId && viewModel.isLoadingResponse && message.id == viewModel.messages.last?.id
+                    let showResponse = message.senderId == viewModel.chatbotId && viewModel.isLoadingResponse && message.id == viewModel.messages.last?.id
+//                    let showResponse = viewModel.isLoadingResponse
                     
                     ZStack(alignment: .leading) {
                         LottieView(filename: "Animation - 1731824848115")

@@ -25,6 +25,7 @@ class ChatViewModel: ObservableObject {
     
     let collectionName = "chatRooms"
     let collectionName2 = "\(Auth.auth().currentUser?.email ?? "")/chatbot"
+    var waitingForResponseTime: Double = 0.0
     
     private var chatRoomId: String {
         guard let userEmail = Auth.auth().currentUser?.email else { return "" }
@@ -102,6 +103,9 @@ class ChatViewModel: ObservableObject {
                                 if !self.messages.contains(where: { $0.id == newMessage.id }) {
                                     self.messages.append(newMessage)
                                 }
+//                                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+//                                    self.isLoadingResponse = false
+//                                }
                             }
                         }
                     }
@@ -113,6 +117,7 @@ class ChatViewModel: ObservableObject {
     // Firestore에 메시지 전송
     func sendMessage(customerEmail: String?) {
         guard let customerEmail = customerEmail, !text.isEmpty else { return }
+//        self.isLoadingResponse = true
 
         let chatRoomRef = db.collection(collectionName).document(chatRoomId)
 
@@ -135,11 +140,13 @@ class ChatViewModel: ObservableObject {
         ], merge: true)
         
         do {
+            self.isLoadingResponse = true
+            print("isLoadingResponse : \(self.isLoadingResponse)")
 //            _ = try db.collection(collectionName).addDocument(from: newMessage)
             _ = try chatRoomRef.collection("messages").addDocument(from: newMessage)
             DispatchQueue.main.async {
                 self.text = ""   // To reset after transmit a message
-                self.isLoadingResponse = true
+//                self.isLoadingResponse = true
             }
         } catch {
             print("Error sending message: \(error)")
@@ -154,6 +161,7 @@ class ChatViewModel: ObservableObject {
     
     private func callChatbotAPI(with message: String, conversation: [Utterance], customerEmail: String?) {
 //        self.isLoadingResponse = true
+        let start = Date()
         
         // 챗봇 API 호출
         guard let url = URL(string: "https://norchestra.maum.ai/harmonize/dosmart") else { return }
@@ -165,9 +173,9 @@ class ChatViewModel: ObservableObject {
         
         // 멀티턴 대화를 위한 utterances 배열
         let requestBody = APIRequest(
-            app_id: "77e64f9d-a586-5ec4-8b6e-b88a91d56a93",
-            name: "sejong_70b_stream",
-            item: ["maumgpt-maal2-70b-streamchat"],
+            app_id: "bf8df488-ac09-5c0d-a3b5-400760af4b18",
+            name: "maal_barista_sejong-capstone_stream",
+            item: ["mxCell#13"],
             param: [
                 Param(
                     utterances: conversation,
@@ -195,7 +203,8 @@ class ChatViewModel: ObservableObject {
                 if let string = String(data: response.data, encoding: .utf8) {
                     DispatchQueue.main.async {
                         print("API 응답: \(string)") // 응답 내용 출력
-//                        self.isLoadingResponse = false
+                        let end = Date()
+                        self.waitingForResponseTime = end.timeIntervalSince(start)
                     }
                 }
                 
@@ -205,49 +214,87 @@ class ChatViewModel: ObservableObject {
                 if case .failure(let error) = completion {
                     print("Error calling API: \(error)")
                     self.isLoadingResponse = false
+                    let end = Date()
+                    self.waitingForResponseTime = end.timeIntervalSince(start)
                 }
             }, receiveValue: { [weak self] data in
                 if let responseString = String(data: data, encoding: .utf8) {
-                    self?.handleChatbotResponse(responseString, customerEmail: customerEmail)
+                    self?.handleChatbotResponse(data: data, customerEmail: customerEmail)
                 }
             })
             .store(in: &cancellables)
     }
     
-    private func handleChatbotResponse(_ response: String, customerEmail: String?) {
+    private func handleChatbotResponse(data: Data, customerEmail: String?) {
 //        guard let message = response.utterances.first else { return }
-        let newMessage = ChatMessage(
-//            id: UUID().uuidString,
-            text: response,
-            createdAt: Date(),
-            senderId: chatbotId,
-            senderName: chatbotName,
-            receiverId: Auth.auth().currentUser?.email ?? "",
-            receiverName: userName
-        )
-        
-        let chatRoomRef = db.collection(collectionName).document(chatRoomId)
-        
         do {
+            let apiResponse = try JSONDecoder().decode([APIResponse].self, from: data)
+            
+//            print("apiResponse : \(apiResponse)")
+            let responseText = apiResponse.map { "\($0.menu): \($0.quantity)" }.joined(separator: "\n")
+            
+            let newMessage = ChatMessage(
+    //            id: UUID().uuidString,
+                text: responseText,
+                createdAt: Date(),
+                senderId: chatbotId,
+                senderName: chatbotName,
+                receiverId: Auth.auth().currentUser?.email ?? "",
+                receiverName: userName
+            )
+            
+            let chatRoomRef = db.collection(collectionName).document(chatRoomId)
+            
             try chatRoomRef.setData([
                 "chatRoomId": chatRoomId,
                 "participants": [customerEmail, chatbotId],
-                "lastMessage": response,
+                "lastMessage": responseText,
                 "lastUpdate": Timestamp()
             ], merge: true)
             
             try chatRoomRef.collection("messages").addDocument(from: newMessage)
             
-//            try db.collection(collectionName).addDocument(from: newMessage)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + self.waitingForResponseTime) {
                 self.isLoadingResponse = false
             }
+            
+            let assistantUtterance = Utterance(role: "ROLE_ASSISTANT", content: responseText)
+            conversation.append(assistantUtterance) // 멀티턴 대화를 위한 챗봇 응답 추가
         } catch {
-            print("Error sending message: \(error)")
+            print("Error decoding API response: \(error)")
+            // 에러 발생 시 원본 응답을 메시지로 추가할 수도 있습니다.
+            let fallbackMessage = String(data: data, encoding: .utf8) ?? "챗봇 응답을 처리할 수 없습니다."
+            let newMessage = ChatMessage(
+                text: fallbackMessage,
+                createdAt: Date(),
+                senderId: chatbotId,
+                senderName: chatbotName,
+                receiverId: Auth.auth().currentUser?.email ?? "",
+                receiverName: userName
+            )
+            
+            let chatRoomRef = db.collection(collectionName).document(chatRoomId)
+            
+            do {
+                try chatRoomRef.setData([
+                    "chatRoomId": chatRoomId,
+                    "participants": [customerEmail, chatbotId],
+                    "lastMessage": fallbackMessage,
+                    "lastUpdate": Timestamp()
+                ], merge: true)
+                
+                try chatRoomRef.collection("messages").addDocument(from: newMessage)
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + self.waitingForResponseTime) {
+                    self.isLoadingResponse = false
+                }
+                
+                let assistantUtterance = Utterance(role: "ROLE_ASSISTANT", content: fallbackMessage)
+                conversation.append(assistantUtterance)
+            } catch {
+                print("Error sending fallback message: \(error)")
+            }
         }
-        
-        let assistantUtterance = Utterance(role: "ROLE_ASSISTANT", content: response)
-        conversation.append(assistantUtterance) // 멀티턴 대화를 위한 챗봇 응답 추가
     }
 }
 
@@ -257,6 +304,12 @@ struct APIRequest: Encodable {
     let name: String
     let item: [String]
     let param: [Param]
+}
+
+struct APIResponse: Decodable {
+//    let menu: [MenuItem]
+    let menu: String
+    let quantity: String
 }
 
 struct Param: Encodable {
@@ -278,8 +331,8 @@ struct Config: Encodable {
     let repetition_penalty: Double
 }
 
-struct MenuItem: Decodable {
-    let menu: String
-    let quantity: String
-}
+//struct MenuItem: Decodable {
+//    let menu: String
+//    let quantity: String
+//}
 

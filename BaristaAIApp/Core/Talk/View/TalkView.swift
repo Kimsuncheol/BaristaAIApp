@@ -43,6 +43,7 @@ struct TalkView: View {
             
             InputTextView(text: $viewModel.text, isFocused: $isInputFocused, onSend: { _ in
                 if !viewModel.text.isEmpty {
+//                    viewModel.isLoadingResponse = true
                     viewModel.sendMessage(customerEmail: user?.email) // ViewModel의 sendMessage 호출
                 }
             })
