@@ -156,7 +156,7 @@ class PaymentHistoryViewModel: ObservableObject {
         var message = ""
         
         switch status {
-        case "Preparing to brew":
+        case "Brewing":
             title = "Order Accepted"
             message = "Your order is now being prepared"
         case "Completed":

@@ -174,6 +174,7 @@ class ChatViewModel: ObservableObject {
             .whereField("senderId", in: [customerEmail, chatbotId])
             .whereField("receiverId", in: [customerEmail, chatbotId])
             .order(by: "createdAt", descending: false)
+//            .limit(to: 50)
             .addSnapshotListener { [weak self] querySnapshot, error in
                 guard let self = self else { return }
 

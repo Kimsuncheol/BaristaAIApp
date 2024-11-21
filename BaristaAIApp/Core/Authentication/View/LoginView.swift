@@ -133,6 +133,13 @@ struct LoginView: View {
             }
             // Make sure you're using the correct `isSignedIn` binding for navigation
             .ignoresSafeArea(.keyboard)
+            .alert("Login Failed", isPresented: .constant(viewModel.loginError != nil), presenting: viewModel.loginError) { error in
+                Button("OK", role: .cancel) {
+                    viewModel.loginError = nil // 에러 초기화
+                }
+            } message: { error in
+                Text(error)
+            }
             .navigationDestination(isPresented: $viewModel.isSignedIn) {
                 if let user = viewModel.currentUser {
                     MainTabView(user: user)

@@ -17,6 +17,7 @@ class LoginViewModel: NSObject, ObservableObject, ASAuthorizationControllerDeleg
     @Published var password = ""
     @Published var isSignedIn: Bool = false
     @Published var currentUser: User?  // Track the current user
+    @Published var loginError: String? // 로그인 실패 메시지
     
     fileprivate var currentNonce: String?
 
@@ -44,9 +45,10 @@ class LoginViewModel: NSObject, ObservableObject, ASAuthorizationControllerDeleg
                     self.isSignedIn = true
                 }
             }
-        } catch {
-            print("Error during sign-in: \(error.localizedDescription)")
-            throw error
+        } catch let error as NSError {
+            DispatchQueue.main.async {
+                self.handleLoginError(error: error)
+            }
         }
     }
     
@@ -188,13 +190,27 @@ class LoginViewModel: NSObject, ObservableObject, ASAuthorizationControllerDeleg
             GIDSignIn.sharedInstance.signOut()
             // 애플 계정 로그인된 거 로그아웃
             
-            
             DispatchQueue.main.async {
                 self.isSignedIn = false
                 self.currentUser = nil
             }
         } catch let signOutError as NSError {
             print("Error signing out: \(signOutError.localizedDescription)")
+        }
+    }
+    
+    private func handleLoginError(error: NSError) {
+        print("Error code: \(error.code), Error message: \(error.localizedDescription)") // 디버깅 출력
+
+        switch error.code {
+        case AuthErrorCode.userNotFound.rawValue:
+            self.loginError = "No account found with this email."
+        case AuthErrorCode.wrongPassword.rawValue:
+            self.loginError = "Incorrect password. Please try again."
+        case AuthErrorCode.invalidEmail.rawValue:
+            self.loginError = "Invalid email format."
+        default:
+            self.loginError = "An unknown error occurred. Please try again."
         }
     }
 }
